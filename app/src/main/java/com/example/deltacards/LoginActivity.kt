@@ -19,6 +19,15 @@ class LoginActivity : Activity() {
         setContentView(R.layout.activity_login)
 
         prefs = getSharedPreferences("deltacards", MODE_PRIVATE)
+
+        // 自动登录：本地已存有效会话则直接进入主界面，无需重新登录
+        val savedServer = prefs.getString("server", "") ?: ""
+        val savedToken = prefs.getString("token", "") ?: ""
+        if (savedServer.isNotEmpty() && savedToken.isNotEmpty()) {
+            startMain()
+            return
+        }
+
         val serverEd = findViewById<EditText>(R.id.server)
         val userEd = findViewById<EditText>(R.id.user)
         val passEd = findViewById<EditText>(R.id.pass)

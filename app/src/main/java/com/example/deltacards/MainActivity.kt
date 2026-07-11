@@ -110,6 +110,12 @@ class MainActivity : Activity() {
                         collected.clear(); collected.addAll(set); saveLocal()
                         (grid.adapter as CardAdapter).notifyDataSetChanged(); updateProgress()
                     }
+                } else if (me.has("error")) {
+                    // token 失效（如其他设备登录导致），回到登录页
+                    runOnUiThread {
+                        prefs.edit().remove("token").apply()
+                        goLogin()
+                    }
                 }
             } catch (_: Exception) { }
         }.start()
