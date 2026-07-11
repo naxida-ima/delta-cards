@@ -12,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.GridView
-import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import org.json.JSONArray
@@ -24,7 +23,6 @@ class MainActivity : Activity() {
     private lateinit var grid: GridView
     private lateinit var progress: TextView
     private lateinit var progressBar: ProgressBar
-    private lateinit var boardBox: LinearLayout
     private var server = ""
     private var token = ""
     private var username = ""
@@ -56,7 +54,6 @@ class MainActivity : Activity() {
         progress = findViewById(R.id.progress)
         progressBar = findViewById(R.id.progressBar)
         progressBar.max = cards.size
-        boardBox = findViewById(R.id.boardBox)
         grid = findViewById(R.id.grid)
         grid.adapter = CardAdapter()
 
@@ -69,22 +66,21 @@ class MainActivity : Activity() {
             syncProgress()
         }
 
-        findViewById<Button>(R.id.reset).setOnClickListener {
-            collected.clear(); saveLocal()
-            (grid.adapter as CardAdapter).notifyDataSetChanged(); updateProgress(); syncProgress()
+        findViewById<Button>(R.id.btnLeaderboard).setOnClickListener {
+            startActivity(Intent(this, LeaderboardActivity::class.java))
         }
-        findViewById<Button>(R.id.btnRefresh).setOnClickListener { refreshAll() }
+        findViewById<Button>(R.id.btnRefresh).setOnClickListener { refreshOwn() }
         findViewById<Button>(R.id.btnSwitch).setOnClickListener {
             prefs.edit().remove("token").apply(); goLogin()
         }
 
         updateProgress()
-        refreshAll()
+        refreshOwn()
     }
 
     override fun onResume() {
         super.onResume()
-        if (token.isNotEmpty()) refreshAll()
+        if (token.isNotEmpty()) refreshOwn()
     }
 
     private fun goLogin() {
@@ -102,7 +98,7 @@ class MainActivity : Activity() {
         progressBar.progress = n
     }
 
-    private fun refreshAll() {
+    private fun refreshOwn() {
         Thread {
             try {
                 val me = Api.get(server, "sync", token)
@@ -110,45 +106,13 @@ class MainActivity : Activity() {
                     val arr = me.getJSONArray("progress")
                     val set = mutableSetOf<String>()
                     for (i in 0 until arr.length()) set.add(arr.getString(i))
-                    this@MainActivity.runOnUiThread {
+                    runOnUiThread {
                         collected.clear(); collected.addAll(set); saveLocal()
                         (grid.adapter as CardAdapter).notifyDataSetChanged(); updateProgress()
                     }
                 }
             } catch (_: Exception) { }
-            try {
-                val b = Api.get(server, "board", token)
-                if (b.has("board")) {
-                    val total = b.optInt("total", cards.size)
-                    val arr = b.getJSONArray("board")
-                    val rows = mutableListOf<Pair<String, Int>>()
-                    for (i in 0 until arr.length()) {
-                        val o = arr.getJSONObject(i)
-                        rows.add(Pair(o.getString("user"), o.getInt("count")))
-                    }
-                    this@MainActivity.runOnUiThread { renderBoard(rows, total) }
-                }
-            } catch (_: Exception) { }
         }.start()
-    }
-
-    private fun renderBoard(rows: List<Pair<String, Int>>, total: Int) {
-        boardBox.removeAllViews()
-        if (rows.isEmpty()) {
-            val t = TextView(this)
-            t.text = "全服进度：还没有人开始收集"
-            t.setTextColor(Color.parseColor("#64748B"))
-            boardBox.addView(t)
-            return
-        }
-        for ((u, cnt) in rows) {
-            val line = TextView(this)
-            line.text = "$u   $cnt/$total"
-            line.textSize = 14f
-            line.setTextColor(if (u == username) ACCENT else TEXT_DARK)
-            line.setPadding(0, 4, 0, 4)
-            boardBox.addView(line)
-        }
     }
 
     private fun syncProgress() {
