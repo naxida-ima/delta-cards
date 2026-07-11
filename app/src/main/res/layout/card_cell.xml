@@ -12,16 +12,18 @@
         android:gravity="center"
         android:background="@drawable/card_bg"
         android:elevation="4dp"
-        android:stateListAnimator="@null" />
+        android:stateListAnimator="@null">
 
-    <TextView
-        android:id="@+id/rank"
-        android:layout_width="match_parent"
-        android:layout_height="78dp"
-        android:gravity="center"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:includeFontPadding="false" />
+        <TextView
+            android:id="@+id/rank"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/check"
@@ -35,6 +37,7 @@
         android:textStyle="bold"
         android:textColor="#FFFFFF"
         android:background="@drawable/check_bg"
+        android:elevation="8dp"
         android:visibility="gone" />
 
 </FrameLayout>
