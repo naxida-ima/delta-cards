@@ -1,7 +1,7 @@
 package com.example.deltacards
 
 import android.app.Activity
-import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -12,8 +12,11 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.GridView
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : Activity() {
 
@@ -21,6 +24,10 @@ class MainActivity : Activity() {
     private lateinit var grid: GridView
     private lateinit var progress: TextView
     private lateinit var progressBar: ProgressBar
+    private lateinit var boardBox: LinearLayout
+    private var server = ""
+    private var token = ""
+    private var username = ""
     private val collected = mutableSetOf<String>()
 
     private val ACCENT = Color.parseColor("#4F46E5")
@@ -30,49 +37,129 @@ class MainActivity : Activity() {
     private val TEXT_WHITE = Color.parseColor("#FFFFFF")
 
     data class Card(val key: String, val label: String, val red: Boolean)
-
     private val cards: List<Card> by lazy { buildCards() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        prefs = getSharedPreferences("deltacards", Context.MODE_PRIVATE)
+        prefs = getSharedPreferences("deltacards", MODE_PRIVATE)
+        server = prefs.getString("server", "") ?: ""
+        token = prefs.getString("token", "") ?: ""
+        username = prefs.getString("user", "") ?: ""
+
+        if (token.isEmpty() || server.isEmpty()) { goLogin(); return }
+
         collected.addAll(prefs.getStringSet("collected", emptySet()) ?: emptySet())
 
+        findViewById<TextView>(R.id.who).text = "已登录：$username"
         progress = findViewById(R.id.progress)
         progressBar = findViewById(R.id.progressBar)
         progressBar.max = cards.size
+        boardBox = findViewById(R.id.boardBox)
         grid = findViewById(R.id.grid)
         grid.adapter = CardAdapter()
 
         grid.setOnItemClickListener { _, _, pos, _ ->
             val c = cards[pos]
             if (collected.contains(c.key)) collected.remove(c.key) else collected.add(c.key)
-            save()
+            saveLocal()
             (grid.adapter as CardAdapter).notifyDataSetChanged()
             updateProgress()
+            syncProgress()
         }
 
         findViewById<Button>(R.id.reset).setOnClickListener {
-            collected.clear()
-            save()
-            (grid.adapter as CardAdapter).notifyDataSetChanged()
-            updateProgress()
+            collected.clear(); saveLocal()
+            (grid.adapter as CardAdapter).notifyDataSetChanged(); updateProgress(); syncProgress()
+        }
+        findViewById<Button>(R.id.btnRefresh).setOnClickListener { refreshAll() }
+        findViewById<Button>(R.id.btnSwitch).setOnClickListener {
+            prefs.edit().remove("token").apply(); goLogin()
         }
 
         updateProgress()
+        refreshAll()
     }
 
-    private fun save() {
+    override fun onResume() {
+        super.onResume()
+        if (token.isNotEmpty()) refreshAll()
+    }
+
+    private fun goLogin() {
+        startActivity(Intent(this, LoginActivity::class.java))
+        finish()
+    }
+
+    private fun saveLocal() {
         prefs.edit().putStringSet("collected", collected).apply()
     }
 
     private fun updateProgress() {
         val n = collected.size
-        val total = cards.size
-        progress.text = "已收集 $n / $total　未收集 ${total - n}"
+        progress.text = "我的收集：$n / ${cards.size}　未收集 ${cards.size - n}"
         progressBar.progress = n
+    }
+
+    private fun refreshAll() {
+        Thread {
+            try {
+                val me = Api.get(server, "sync", token)
+                if (me.has("progress")) {
+                    val arr = me.getJSONArray("progress")
+                    val set = mutableSetOf<String>()
+                    for (i in 0 until arr.length()) set.add(arr.getString(i))
+                    this@MainActivity.runOnUiThread {
+                        collected.clear(); collected.addAll(set); saveLocal()
+                        (grid.adapter as CardAdapter).notifyDataSetChanged(); updateProgress()
+                    }
+                }
+            } catch (_: Exception) { }
+            try {
+                val b = Api.get(server, "board", token)
+                if (b.has("board")) {
+                    val total = b.optInt("total", cards.size)
+                    val arr = b.getJSONArray("board")
+                    val rows = mutableListOf<Pair<String, Int>>()
+                    for (i in 0 until arr.length()) {
+                        val o = arr.getJSONObject(i)
+                        rows.add(Pair(o.getString("user"), o.getInt("count")))
+                    }
+                    this@MainActivity.runOnUiThread { renderBoard(rows, total) }
+                }
+            } catch (_: Exception) { }
+        }.start()
+    }
+
+    private fun renderBoard(rows: List<Pair<String, Int>>, total: Int) {
+        boardBox.removeAllViews()
+        if (rows.isEmpty()) {
+            val t = TextView(this)
+            t.text = "全服进度：还没有人开始收集"
+            t.setTextColor(Color.parseColor("#64748B"))
+            boardBox.addView(t)
+            return
+        }
+        for ((u, cnt) in rows) {
+            val line = TextView(this)
+            line.text = "$u   $cnt/$total"
+            line.textSize = 14f
+            line.setTextColor(if (u == username) ACCENT else TEXT_DARK)
+            line.setPadding(0, 4, 0, 4)
+            boardBox.addView(line)
+        }
+    }
+
+    private fun syncProgress() {
+        Thread {
+            try {
+                val arr = JSONArray()
+                for (k in collected) arr.put(k)
+                val body = JSONObject().apply { put("progress", arr) }
+                Api.post(server, "sync", token, body)
+            } catch (_: Exception) { }
+        }.start()
     }
 
     private fun buildCards(): List<Card> {
@@ -91,11 +178,9 @@ class MainActivity : Activity() {
     }
 
     inner class CardAdapter : BaseAdapter() {
-
         override fun getCount(): Int = cards.size
         override fun getItem(p: Int): Any = cards[p]
         override fun getItemId(p: Int): Long = p.toLong()
-
         override fun getView(p: Int, convertView: View?, parent: ViewGroup): View {
             val view = convertView ?: LayoutInflater.from(this@MainActivity)
                 .inflate(R.layout.card_cell, parent, false)
@@ -104,7 +189,6 @@ class MainActivity : Activity() {
             val check = view.findViewById<TextView>(R.id.check)
             val c = cards[p]
             val got = collected.contains(c.key)
-
             rank.text = c.label
             if (got) {
                 card.backgroundTintList = ColorStateList.valueOf(ACCENT)
