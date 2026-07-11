@@ -3,15 +3,49 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="8dp">
+    android:background="#F1F5F9">
 
-    <TextView
-        android:id="@+id/progress"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:gravity="center"
-        android:padding="8dp" />
+        android:orientation="vertical"
+        android:background="@drawable/header_bg"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="三角洲卡牌收集"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="捡到一张，点一下打勾"
+            android:textColor="#E0E7FF"
+            android:textSize="14sp"
+            android:layout_marginTop="2dp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:max="54" />
+
+        <TextView
+            android:id="@+id/progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:layout_marginTop="6dp" />
+
+    </LinearLayout>
 
     <GridView
         android:id="@+id/grid"
@@ -19,14 +53,22 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:numColumns="3"
-        android:verticalSpacing="6dp"
-        android:horizontalSpacing="6dp"
-        android:stretchMode="columnWidth" />
+        android:verticalSpacing="10dp"
+        android:horizontalSpacing="10dp"
+        android:padding="12dp"
+        android:stretchMode="columnWidth"
+        android:clipToPadding="false"
+        android:scrollbarStyle="outsideOverlay" />
 
     <Button
         android:id="@+id/reset"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="清空重置" />
+        android:layout_margin="12dp"
+        android:text="清空重置"
+        android:textColor="#4F46E5"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:background="@drawable/btn_reset" />
 
 </LinearLayout>

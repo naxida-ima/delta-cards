@@ -3,14 +3,16 @@ package com.example.deltacards
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
-import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.GridView
+import android.widget.ProgressBar
 import android.widget.TextView
 
 class MainActivity : Activity() {
@@ -18,7 +20,14 @@ class MainActivity : Activity() {
     private lateinit var prefs: SharedPreferences
     private lateinit var grid: GridView
     private lateinit var progress: TextView
+    private lateinit var progressBar: ProgressBar
     private val collected = mutableSetOf<String>()
+
+    private val ACCENT = Color.parseColor("#4F46E5")
+    private val CARD_NORMAL = Color.parseColor("#FFFFFF")
+    private val TEXT_DARK = Color.parseColor("#0F172A")
+    private val TEXT_RED = Color.parseColor("#DC2626")
+    private val TEXT_WHITE = Color.parseColor("#FFFFFF")
 
     data class Card(val key: String, val label: String, val red: Boolean)
 
@@ -32,6 +41,8 @@ class MainActivity : Activity() {
         collected.addAll(prefs.getStringSet("collected", emptySet()) ?: emptySet())
 
         progress = findViewById(R.id.progress)
+        progressBar = findViewById(R.id.progressBar)
+        progressBar.max = cards.size
         grid = findViewById(R.id.grid)
         grid.adapter = CardAdapter()
 
@@ -58,7 +69,10 @@ class MainActivity : Activity() {
     }
 
     private fun updateProgress() {
-        progress.text = "已收集 ${collected.size} / ${cards.size}　未收集 ${cards.size - collected.size}"
+        val n = collected.size
+        val total = cards.size
+        progress.text = "已收集 $n / $total　未收集 ${total - n}"
+        progressBar.progress = n
     }
 
     private fun buildCards(): List<Card> {
@@ -83,18 +97,25 @@ class MainActivity : Activity() {
         override fun getItemId(p: Int): Long = p.toLong()
 
         override fun getView(p: Int, convertView: View?, parent: ViewGroup): View {
-            val tv = (convertView as? TextView) ?: TextView(this@MainActivity).apply {
-                val pad = (16 * resources.displayMetrics.density).toInt()
-                setPadding(pad, pad, pad, pad)
-                textSize = 20f
-                gravity = Gravity.CENTER
-            }
+            val view = convertView ?: LayoutInflater.from(this@MainActivity)
+                .inflate(R.layout.card_cell, parent, false)
+            val card = view.findViewById<View>(R.id.card)
+            val rank = view.findViewById<TextView>(R.id.rank)
+            val check = view.findViewById<TextView>(R.id.check)
             val c = cards[p]
             val got = collected.contains(c.key)
-            tv.text = if (got) "${c.label} ✓" else c.label
-            tv.setTextColor(if (c.red) Color.parseColor("#d00000") else Color.BLACK)
-            tv.setBackgroundColor(if (got) Color.parseColor("#c8f7c5") else Color.parseColor("#eeeeee"))
-            return tv
+
+            rank.text = c.label
+            if (got) {
+                card.backgroundTintList = ColorStateList.valueOf(ACCENT)
+                rank.setTextColor(TEXT_WHITE)
+                check.visibility = View.VISIBLE
+            } else {
+                card.backgroundTintList = ColorStateList.valueOf(CARD_NORMAL)
+                rank.setTextColor(if (c.red) TEXT_RED else TEXT_DARK)
+                check.visibility = View.GONE
+            }
+            return view
         }
     }
 }
