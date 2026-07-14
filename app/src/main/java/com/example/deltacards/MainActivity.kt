@@ -134,10 +134,10 @@ class MainActivity : Activity() {
 
     private fun buildCards(): List<Card> {
         val suits = listOf(
-            Triple("S", "♠", false),
             Triple("H", "♥", true),
-            Triple("C", "♣", false),
-            Triple("D", "♦", true)
+            Triple("D", "♦", true),
+            Triple("S", "♠", false),
+            Triple("C", "♣", false)
         )
         val ranks = listOf("A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K")
         val list = mutableListOf<Card>()
